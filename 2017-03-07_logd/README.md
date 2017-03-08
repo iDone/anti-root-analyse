@@ -78,7 +78,6 @@ core/logd/LogReader.cpp:181:39:    static const char socketName[] = "logdr";
 core/logd/main.cpp:176:41:    // LogReader listens on /dev/socket/logdr. When a client
 core/logd/tests/logd_test.cpp:443:35:    int fd = socket_local_client("logdr",
 extras/tests/fstest/perm_checker.conf:103:13:/dev/socket/logdr 666 666 logd logd logd logd
-
 ```
 13.剩下的fix，就有点看运气了。首先确定了这个方法只能root Android L，没有办法root Android M。所以Google应该已经fix掉了。一开始我怀疑是liblog代码的问题，对比了一下M和L差异，感觉不是log_read.c的问题，然后对了logd/main.cpp，变化太大了，不好找。然后对比到init.rc，果然logd的启动参数有变化，google已经有patch了，其实init拉起logd时，把group加上即可。
 ```diff
@@ -142,3 +141,10 @@ index 7af2b770..2ac182be 100644
  service logd-reinit /system/bin/logd --reinit
      oneshot
 ```
+
+14.可以继续往下分析logd是怎么被干掉的，还有进程究竟是怎么拿到root权限。
+
+```
+TODO
+```
+
