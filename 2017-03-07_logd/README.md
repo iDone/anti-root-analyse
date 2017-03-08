@@ -70,5 +70,75 @@ $ ag dumpAndClose
 core/liblog/log_read.c:601:52:               (logger_list->mode & O_NONBLOCK) ? "dumpAndClose" : "stream");
 core/logd/LogReader.cpp:94:26:    if (strncmp(buffer, "dumpAndClose", 12) == 0) {
 core/logd/tests/logd_test.cpp:454:36:        static const char ask[] = "dumpAndClose lids=0,1,2,3";
+
+$ ag logdr
+core/liblog/log_read.c:590:41:        int sock = socket_local_client("logdr",
+core/rootdir/init.rc:518:12:    socket logdr seqpacket 0666 logd logd
+core/logd/LogReader.cpp:181:39:    static const char socketName[] = "logdr";
+core/logd/main.cpp:176:41:    // LogReader listens on /dev/socket/logdr. When a client
+core/logd/tests/logd_test.cpp:443:35:    int fd = socket_local_client("logdr",
+extras/tests/fstest/perm_checker.conf:103:13:/dev/socket/logdr 666 666 logd logd logd logd
+
 ```
-13.TODO
+13.剩下的fix，就有点看运气了。首先确定了这个方法只能root Android L，没有办法root Android M。所以Google应该已经fix掉了。一开始我怀疑是liblog代码的问题，对比了一下M和L差异，感觉不是log_read.c的问题，然后对了logd/main.cpp，变化太大了，不好找。然后对比到init.rc，果然logd的启动参数有变化，google已经有patch了，其实init拉起logd时，把group加上即可。
+```diff
+Author: Jeff Vander Stoep <jeffv@google.com>  2015-07-24 06:18:36
+Committer: Jeffrey Vander Stoep <jeffv@google.com>  2015-07-25 00:22:06
+Parent: ed2fe57c2509d0d784ba7dbce1deef21afb2a612 (Use single tree for multiple storage views.)
+Child:  1d0fe13a9e720a88766b38070195670183274e30 (am 3f62a020: logd: allow logd to write to /dev/cpuset files)
+Child:  10a239b971d737b15a5d0652a441994e5c02ad88 (Give secondary users read-only physical cards.)
+Child:  cc451785fe4426566f6c4a6a5156d4fb40bcc22d (Fix incorrectly sized buffer.)
+Branches: remotes/m/sanfrancisco, remotes/smartisan/surabaya-rom
+Follows: 
+Precedes: 
+
+    logd: allow logd to write to /dev/cpuset files
+    
+    Required by logd on devices with USE_CPUSETS defined.
+    
+    Make /dev/cpuset/background, /dev/cpuset/foreground and
+    /dev/cpuset/task writeable by system gid. Add logd to system
+    group for writing to cpuset files and to root group to avoid
+    regressions. When dropping privs, also drop supplementary groups.
+    
+    Bug: 22699101
+    Change-Id: Icc01769b18b5e1f1649623da8325a8bfabc3a3f0
+
+-------------------------------- logd/main.cpp --------------------------------
+index 9b889838..a3241d05 100644
+@@ -103,6 +103,10 @@ static int drop_privs() {
+         return -1;
+     }
+ 
++    if (setgroups(0, NULL) == -1) {
++        return -1;
++    }
++
+     if (setgid(AID_LOGD) != 0) {
+         return -1;
+     }
+
+------------------------------- rootdir/init.rc -------------------------------
+index 7af2b770..2ac182be 100644
+@@ -145,9 +145,9 @@ on init
+     chown system system /dev/cpuset/tasks
+     chown system system /dev/cpuset/foreground/tasks
+     chown system system /dev/cpuset/background/tasks
+-    chmod 0644 /dev/cpuset/foreground/tasks
+-    chmod 0644 /dev/cpuset/background/tasks
+-    chmod 0644 /dev/cpuset/tasks
++    chmod 0664 /dev/cpuset/foreground/tasks
++    chmod 0664 /dev/cpuset/background/tasks
++    chmod 0664 /dev/cpuset/tasks
+ 
+ 
+     # qtaguid will limit access to specific data based on group memberships.
+@@ -523,6 +523,7 @@ service logd /system/bin/logd
+     socket logd stream 0666 logd logd
+     socket logdr seqpacket 0666 logd logd
+     socket logdw dgram 0222 logd logd
++    group root system
+ 
+ service logd-reinit /system/bin/logd --reinit
+     oneshot
+```
