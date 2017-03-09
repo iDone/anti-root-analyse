@@ -52,9 +52,9 @@ logd      10090 1     20224  1552  ffffffff 838a51c8 S /system/bin/logd
 
 10.首先想到的是strace跟踪它的所有系统调用，但是由于root的过程非常快，手动敲键盘完全跟不上，所以写简本监控程序，见trace.sh
 
-11.刷了一个user root的版本，把strace丢进去，然后在host端执行脚本监控，重新root手机，得到trace.log。
+11.刷了一个user root的版本，把strace丢进去，然后在host端执行脚本监控，重新root手机，得到一堆trace.log。
 
-12.使用logd过滤trace.log，发现破解的核心系统调用
+12.使用logd过滤得到的trace.log，发现破解的核心系统调用
 ```
 socket(PF_LOCAL, SOCK_SEQPACKET, 0)     = 3
 connect(3, {sa_family=AF_LOCAL, sun_path="/dev/socket/logdr"}, 110) = 0
