@@ -174,5 +174,11 @@ read(3, "u:r:untrusted_app:s0\0", 24)   = 21
 nanosleep({1, 0}, 0x7febda3b40)         = 0
 ```
 
-15.说明logd没有被杀，应该是sec0w64或者dirtyc0w64运行出了问题，继续对比这两个log，发现fix后的dirtyc0w64并没有执行任何kill的系统调用
+15.说明logd没有被杀，应该是sec0w64或者dirtyc0w64运行出了问题，继续对比这两个log，发现fix后的dirtyc0w64并没有执行任何kill的系统调用。所以，现在需要判断的是，kill系统调用，执行的条件是什么？目前这个fix是不是，可能根本没有触及到root cause，对方更改一下判断条件，马上就能重新root手机了。
+
+```
+TODO
+```
+
+
 
