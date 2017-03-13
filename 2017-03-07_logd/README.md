@@ -142,9 +142,37 @@ index 7af2b770..2ac182be 100644
      oneshot
 ```
 
-14.可以继续往下分析logd是怎么被干掉的，还有进程究竟是怎么拿到root权限。
+14.可以继续往下分析logd是怎么被干掉的，还有进程究竟是怎么拿到root权限。把patch进到系统后，破解软件已经不能正常root手机，此时我们继续用trace.sh脚本跟踪，得到fix-trace的log，好，开始分析。
+
+首先logd没有被杀，对比前后logd.log，发现并没有收到dirtyc0w发送来的字符串，所以logd没有被杀
 
 ```
-TODO
+dirtyc0w64.log:4651:11:write(3, "dumpAndClose start=x\0/proc\0/proc"..., 50) = 50
 ```
+
+然后dirtyc0w64为什么没有杀logd？对比dirtyc0w64的log，就是fix后的log，没有了上面这一段killed by SIGKILL的过程，然后也没有执行下面的干点logd的逻辑。
+
+```
+[pid  8511] <... madvise resumed> )     = 0
+[pid  8302] <... write resumed> )       = 4096
+[pid  8511] madvise(0x7fb700c000, 4096, MADV_DONTNEED <unfinished ...>
+[pid  8302] kill(8511, SIGKILL <unfinished ...>
+[pid  8511] <... madvise resumed> )     = 0
+[pid  8302] <... kill resumed> )        = 0
+[pid  8511] +++ killed by SIGKILL +++
+wait4(-1, 0x213f, 0, NULL)              = -1 EFAULT (Bad address)
+--- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_KILLED, si_pid=8511, si_uid=10124, si_status=SIGKILL, si_utime=0, si_stime=2} ---
+close(3)                                = 0
+
+
+socket(PF_LOCAL, SOCK_SEQPACKET, 0)     = 3
+connect(3, {sa_family=AF_LOCAL, sun_path="/dev/socket/logdr"}, 110) = 0
+write(3, "dumpAndClose start=x\0/proc\0/proc"..., 50) = 50
+close(3)                                = 0
+openat(AT_FDCWD, "/proc/self/attr/current", O_RDONLY) = 3
+read(3, "u:r:untrusted_app:s0\0", 24)   = 21
+nanosleep({1, 0}, 0x7febda3b40)         = 0
+```
+
+15.说明logd没有被杀，应该是sec0w64或者dirtyc0w64运行出了问题，继续对比这两个log，发现fix后的dirtyc0w64并没有执行任何kill的系统调用
 
